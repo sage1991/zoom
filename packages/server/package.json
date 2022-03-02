@@ -1,0 +1,20 @@
+{
+  "name": "@zoom/server",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "dependencies": {
+    "pug": "^3.0.2",
+    "ws": "^8.5.0"
+  },
+  "devDependencies": {
+    "@babel/node": "^7.16.8",
+    "@types/express": "^4.17.13",
+    "@types/node": "^17.0.18",
+    "nodemon": "^2.0.15"
+  }
+}
