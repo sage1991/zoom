@@ -1,43 +1,112 @@
-import React, { FC, useEffect, useRef, useState } from "react"
+import React, { FC, useEffect, useState } from "react"
+import { io } from "socket.io-client"
+
+const socket = io("http://192.168.0.221:3000")
 
 export const App: FC = () => {
-  const socket = useRef<WebSocket>()
-  const [ input, setInput ] = useState<string>("")
-  const [ nickname, setNickName ] = useState<string>("")
-  const [ messages, setMessages ] = useState<string[]>([])
+  const [ isEnterRoom, setIsEnterRoom ] = useState<boolean>(false)
+  const [ roomName, setRoomName ] = useState<string>("")
+  const [ count, setCount ] = useState<number>(0)
+  const [ nickName, setNickName ] = useState<string>("")
+  const [ message, setMessage ] = useState<string>("")
+  const [ chatList, setChatList ] = useState<string[]>([])
+  const [ rooms, setRooms ] = useState<string[]>([])
 
   useEffect(() => {
-    socket.current = new WebSocket(`ws://localhost:3000`)
-    socket.current.addEventListener("open", () => {
-      console.log("Connected to the Server ✅")
+    socket.on("welcome", (nickName: string, newCount: number) => {
+      setCount(newCount)
+      setChatList(prev => [ ...prev, `${nickName} joined!` ])
     })
-    socket.current.addEventListener("message", (e) => {
-      setMessages(prev => [ ...prev, e.data ])
+    socket.on("bye", (nickName: string, newCount: number) => {
+      setCount(newCount)
+      setChatList(prev => [ ...prev, `${nickName} left!` ])
     })
-    socket.current.addEventListener("close", () => {
-      console.log("Disconnected from the Server ❌")
+    socket.on("new-message", (message: string) => {
+      setChatList(prev => [ ...prev, message ])
     })
-
-    return () => socket.current?.close()
+    socket.on("room_change", (rooms: string[]) => {
+      setRooms(rooms)
+    })
   }, [])
 
-  const onSubmitNickName = (e: React.FormEvent<HTMLFormElement>) => {
+  const onRomeNameSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    socket.current?.send(JSON.stringify({ type: "SET_NICKNAME", payload: nickname }))
+    socket.emit("enter-room", roomName, () => {
+      setIsEnterRoom(true)
+    })
   }
 
-  const onSubmitInput = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    socket.current?.send(JSON.stringify({ type: "SEND_MESSAGE", payload: input }))
-    setInput("")
+  const onRoomNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRoomName(e.target.value)
   }
 
-  const onChangeNickName = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onMessageSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    setMessage("")
+    socket.emit("new-message", message, roomName, () => {
+      setChatList(prev => [ ...prev, `You: ${message}` ])
+    })
+  }
+
+  const onMessageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setMessage(e.target.value)
+  }
+
+  const onNickNameSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    socket.emit("nickname", nickName)
+  }
+
+  const onNickNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setNickName(e.target.value)
   }
 
-  const onChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInput(e.target.value)
+  let contents = (
+    <div id="welcome">
+      <form onSubmit={onRomeNameSubmit}>
+        <input
+          type="text"
+          placeholder="room name"
+          required
+          value={roomName}
+          onChange={onRoomNameChange}
+        />
+        <button>Enter Room</button>
+      </form>
+      <h4>Open Rooms:</h4>
+      <ul>
+        { rooms.map((name) => <li key={name}>{ name }</li>) }
+      </ul>
+    </div>
+  )
+
+  if (isEnterRoom) {
+    contents = (
+      <div id="room">
+        <h3>Room {roomName} ({count})</h3>
+        <ul>{chatList.map((chat, index) => <li key={index}>{chat}</li>)}</ul>
+        <form onSubmit={onNickNameSubmit}>
+          <input
+            type="text"
+            placeholder="nickname"
+            required
+            value={nickName}
+            onChange={onNickNameChange}
+          />
+          <button>Save</button>
+        </form>
+        <form onSubmit={onMessageSubmit}>
+          <input
+            type="text"
+            placeholder="message"
+            required
+            value={message}
+            onChange={onMessageChange}
+          />
+          <button>Send</button>
+        </form>
+      </div>
+    )
   }
 
   return (
@@ -46,31 +115,7 @@ export const App: FC = () => {
         <h1>Noom</h1>
       </header>
       <main>
-        <ul>
-          {
-            messages.map((message, index) => (
-              <li key={index}>{message}</li>
-            ))
-          }
-        </ul>
-        <form onSubmit={onSubmitNickName}>
-          <input
-            type="text"
-            placeholder="choose a nickname"
-            value={nickname}
-            onChange={onChangeNickName}
-          />
-          <button type="submit">Save</button>
-        </form>
-        <form onSubmit={onSubmitInput}>
-          <input
-            type="text"
-            placeholder="write a message"
-            value={input}
-            onChange={onChangeInput}
-          />
-          <button type="submit">Send</button>
-        </form>
+        {contents}
       </main>
     </>
   )
