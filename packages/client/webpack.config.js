@@ -10,7 +10,8 @@ module.exports = {
     path: path.resolve(__dirname, "dist")
   },
   devServer: {
-    port: 8080
+    port: 8080,
+    https: true
   },
   resolve: {
     extensions: [ ".js", ".jsx", ".ts", ".tsx" ]

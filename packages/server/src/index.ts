@@ -26,11 +26,18 @@ const countRooms = (name: string) => {
 }
 
 io.on("connection", (socket) => {
+  console.log(socket)
   socket.data.nickName = "Anonymous"
 
   socket.onAny((eventName, ...args) => {
     console.log(io.sockets.adapter)
     console.log(`${eventName}: `, args)
+  })
+
+  socket.on("join-room", (roomName, callback) => {
+    socket.join(roomName)
+    socket.to(roomName).emit("welcome")
+    callback()
   })
 
   socket.on("enter-room", (roomName, callback) => {
